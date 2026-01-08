@@ -1,6 +1,9 @@
 import { Dashboard } from "./components/dashboard";
-import { Login } from "./components/login";
-import { SignUp } from "./components/sign-up";
+import { Login } from "./components/auth/login";
+import { SignUp } from "./components/auth/sign-up";
+import { Logout } from './components/auth/logout';
+import { FreelancersList } from './components/freelancers/freelancers-list';
+import { FileUtils } from './utils/file-utils';
 
 export class Router {
     constructor() {
@@ -12,7 +15,7 @@ export class Router {
             {
                 route: '/',
                 title: 'Дашборд',
-                filePathTemplate: '/templates/dashboard.html',
+                filePathTemplate: '/templates/pages/dashboard.html',
                 useLayout: '/templates/layout.html',
                 load: () => {
                     new Dashboard();
@@ -21,18 +24,18 @@ export class Router {
             {
                 route: '/404',
                 title: 'Страница не найдена',
-                filePathTemplate: '/templates/404.html',
+                filePathTemplate: '/templates/pages/404.html',
                 useLayout: false,
             },
             {
                 route: '/login',
                 title: 'Авторизация',
-                filePathTemplate: '/templates/login.html',
+                filePathTemplate: '/templates/pages/auth/login.html',
                 useLayout: false,
                 load: () => {
                     document.body.classList.add('login-page');
                     document.body.style.height = '100vh';
-                    new Login();
+                    new Login(this.openNewRoute.bind(this));
                 },
                 unload: () => {
                     document.body.classList.remove('login-page');
@@ -43,12 +46,12 @@ export class Router {
             {
                 route: '/sign-up',
                 title: 'Регистрация',
-                filePathTemplate: '/templates/sign-up.html',
+                filePathTemplate: '/templates/pages/auth/sign-up.html',
                 useLayout: false,
                 load: () => {
                     document.body.classList.add('register-page');
                     document.body.style.height = '100vh';
-                    new SignUp();
+                    new SignUp(this.openNewRoute.bind(this));
                 },
                 unload: () => {
                     document.body.classList.remove('login-page');
@@ -56,16 +59,39 @@ export class Router {
                 },
                 styles: ['icheck-bootstrap.min.css']
             },
+            {
+                route: '/logout',
+                load: () => {
+                    new Logout(this.openNewRoute.bind(this));
+                }
+            },
+            {
+                route: '/freelances',
+                title: 'Фрилансеры',
+                filePathTemplate: '/templates/pages/freelancers/list.html',
+                useLayout: '/templates/layout.html',
+                load: () => {
+                    new FreelancersList(this.openNewRoute.bind(this));
+                },
+                styles: ['dataTables.bootstrap4.min.css'],
+                scripts: ['jquery.dataTables.min.js', 'dataTables.bootstrap4.min.js']
+            }
         ];
     }
 
     initEvents() {
         window.addEventListener('DOMContentLoaded', this.activateRoute.bind(this));
         window.addEventListener('popstate', this.activateRoute.bind(this));
-        document.addEventListener('click', this.openNewRoute.bind(this));
+        document.addEventListener('click', this.clickHandler.bind(this));
     }
 
-    async openNewRoute(e) {
+    async openNewRoute(url) {
+        const currentRoute = window.location.pathname;
+        history.pushState(null, '', url);
+        await this.activateRoute(null, currentRoute)
+    }
+
+    async clickHandler(e) {
         let element = null;
         if (e.target.nodeName === 'A') {
             element = e.target;
@@ -75,14 +101,13 @@ export class Router {
 
         if (element) {
             e.preventDefault();
+            const currentRoute = window.location.pathname;
             const url = element.href.replace(window.location.origin, '');
-            if (!url || url === '/#' || url.startsWith('javascript:void(0)')) {
+            if (!url || (currentRoute === url.replace('#', '')) || url.startsWith('javascript:void(0)')) {
                 return;
             }
 
-            const currentRoute = window.location.pathname;
-            history.pushState(null, '', url);
-            await this.activateRoute(null, currentRoute)
+            await this.openNewRoute(url);
         }
     }
 
@@ -92,6 +117,11 @@ export class Router {
             if (currentRoute.styles && currentRoute.styles.length > 0) {
                 currentRoute.styles.forEach(style => {
                    document.querySelector(`link[href='/css/${style}']`).remove();
+                });
+            }
+            if (currentRoute.scripts && currentRoute.scripts.length > 0) {
+                currentRoute.scripts.forEach(script => {
+                   document.querySelector(`script[src='/js/${script}']`).remove();
                 });
             }
 
@@ -105,11 +135,14 @@ export class Router {
         if (newRoute) {
             if (newRoute.styles && newRoute.styles.length > 0) {
                 newRoute.styles.forEach(style => {
-                    const link = document.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = '/css/' + style;
-                    document.head.insertBefore(link, this.adminlteStyleElement);
+                    FileUtils.loadPageStyles('/css/' + style, this.adminlteStyleElement);
                 });
+            }
+
+            if (newRoute.scripts && newRoute.scripts.length > 0) {
+                for (const script of newRoute.scripts) {
+                    await FileUtils.loadPageScript('/js/' + script);
+                }
             }
             if (newRoute.title) {
                 this.titlePageElement.innerText = newRoute.title + ' | Freelance Studio';
