@@ -8,6 +8,8 @@ import { FreelancersView } from './components/freelancers/freelancers-view';
 import { FreelancersCreate } from './components/freelancers/freelancers-create';
 import { FreelancerEdit } from './components/freelancers/freelancer-edit';
 import { FreelancersDelete } from './components/freelancers/freelancers-delete';
+import { OrderList } from './components/orders/orders-list';
+import { OrdersView } from './components/orders/orders-view';
 
 export class Router {
     constructor() {
@@ -118,7 +120,27 @@ export class Router {
                 load: () => {
                     new FreelancersDelete(this.openNewRoute.bind(this));
                 }
-            }
+            },
+            {
+                route: '/orders',
+                title: 'Заказы',
+                filePathTemplate: '/templates/pages/orders/list.html',
+                useLayout: '/templates/layout.html',
+                load: () => {
+                    new OrderList(this.openNewRoute.bind(this));
+                },
+                styles: ['dataTables.bootstrap4.min.css'],
+                scripts: ['jquery.dataTables.min.js', 'dataTables.bootstrap4.min.js']
+            },
+            {
+                route: '/orders/view',
+                title: 'Заказ',
+                filePathTemplate: '/templates/pages/orders/view.html',
+                useLayout: '/templates/layout.html',
+                load: () => {
+                    new OrdersView(this.openNewRoute.bind(this));
+                }
+            },
         ];
     }
 
