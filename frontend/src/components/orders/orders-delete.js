@@ -1,6 +1,6 @@
 import { HttpUtils } from '../../utils/http-utils';
 
-export class FreelancersDelete {
+export class OrdersDelete {
     constructor(openNewRoute) {
         this.openNewRoute = openNewRoute;
 
@@ -10,11 +10,11 @@ export class FreelancersDelete {
             return this.openNewRoute('/')
         }
 
-        this.deleteFreelancer(id).then();
+        this.deleteOrder(id).then();
     }
 
-    async deleteFreelancer(id) {
-        const result = await HttpUtils.request('/freelancers/' + id, 'DELETE', true);
+    async deleteOrder(id) {
+        const result = await HttpUtils.request('/orders/' + id, 'DELETE', true);
 
         if (result.redirect) {
             return this.openNewRoute(result.redirect);
@@ -22,9 +22,9 @@ export class FreelancersDelete {
 
         if (result.error || !result.response || (result.response && result.response.error )) {
             console.log(result.response.error);
-            return alert('Возникла ошибка при удалении фрилансера. Обратитесь в поддержку');
+            return alert('Возникла ошибка при удалении заказа. Обратитесь в поддержку');
         }
 
-        return this.openNewRoute('/freelancers');
+        return this.openNewRoute('/orders');
     }
 }

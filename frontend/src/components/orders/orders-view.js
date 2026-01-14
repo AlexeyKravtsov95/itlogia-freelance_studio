@@ -43,7 +43,7 @@ export class OrdersView {
         }
 
         document.getElementById('complete').innerText = (order.completeDate)
-            ? (new Date(order.completeDate)).toLocaleString('ru-RU')
+            ? (new Date(order.completeDate)).toLocaleDateString('ru-RU')
             : '(Заказ не выполнен)';
 
         if (order.deadlineDate) {

@@ -10,6 +10,9 @@ import { FreelancerEdit } from './components/freelancers/freelancer-edit';
 import { FreelancersDelete } from './components/freelancers/freelancers-delete';
 import { OrderList } from './components/orders/orders-list';
 import { OrdersView } from './components/orders/orders-view';
+import { OrdersCreate } from './components/orders/orders-create';
+import { OrderEdit } from './components/orders/orders-edit';
+import { OrdersDelete } from './components/orders/orders-delete';
 
 export class Router {
     constructor() {
@@ -139,6 +142,54 @@ export class Router {
                 useLayout: '/templates/layout.html',
                 load: () => {
                     new OrdersView(this.openNewRoute.bind(this));
+                }
+            },
+            {
+                route: '/orders/create',
+                title: 'Создание заказа',
+                filePathTemplate: '/templates/pages/orders/create.html',
+                useLayout: '/templates/layout.html',
+                load: () => {
+                    new OrdersCreate(this.openNewRoute.bind(this));
+                },
+                scripts: [
+                    'moment.min.js',
+                    'moment-ru-locale.js',
+                    'tempusdominus-bootstrap-4.min.js',
+                    'select2.full.min.js'
+
+                ],
+                styles: [
+                    'tempusdominus-bootstrap-4.min.css',
+                    'select2.min.css',
+                    'select2-bootstrap4.min.css'
+                ]
+            },
+            {
+                route: '/orders/edit',
+                title: 'Редактирование заказа',
+                filePathTemplate: '/templates/pages/orders/edit.html',
+                useLayout: '/templates/layout.html',
+                load: () => {
+                    new OrderEdit(this.openNewRoute.bind(this));
+                },
+                scripts: [
+                    'moment.min.js',
+                    'moment-ru-locale.js',
+                    'tempusdominus-bootstrap-4.min.js',
+                    'select2.full.min.js'
+
+                ],
+                styles: [
+                    'tempusdominus-bootstrap-4.min.css',
+                    'select2.min.css',
+                    'select2-bootstrap4.min.css'
+                ]
+            },
+            {
+                route: '/orders/delete',
+                load: () => {
+                    new OrdersDelete(this.openNewRoute.bind(this));
                 }
             },
         ];
