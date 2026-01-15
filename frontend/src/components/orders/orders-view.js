@@ -51,7 +51,6 @@ export class OrdersView {
             document.getElementById('deadline').innerText = date.toLocaleDateString('ru-RU');
         }
 
-
         if (order.freelancer.avatar) {
             document.getElementById('freelancer-avatar').src = config.host + order.freelancer.avatar;
         }
