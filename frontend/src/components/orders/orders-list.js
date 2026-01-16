@@ -1,5 +1,5 @@
-import { HttpUtils } from '../../utils/http-utils';
 import { CommonUtils } from '../../utils/common-utils';
+import { OrdersService } from '../../services/orders-service';
 
 export class OrderList {
     constructor(openNewRoute) {
@@ -8,35 +8,29 @@ export class OrderList {
     }
 
     async getOrders() {
-        const result = await HttpUtils.request('/orders');
+        const response = await OrdersService.getOrders();
 
-        if (result.redirect) {
-            return this.openNewRoute(result.redirect);
+        if (response.error) {
+            alert(response.error);
+            return response.redirect ? this.openNewRoute(response.redirect) : null;
         }
 
-        if (result.error || !result.response || (result.response && (result.response.error || !result.response.orders))) {
-            return alert('Возникла ошибка при запросе фрилансеров. Обратитесь в поддержку');
-        }
-
-        this.showRecords(result.response.orders);
+        this.showRecords(response.orders);
     }
 
     showRecords(orders) {
         const recordsElement = document.getElementById('records');
         for (let i = 0; i < orders.length; i++) {
             const trElement = document.createElement('tr');
+            const statusInfo = CommonUtils.getStatusInfo(orders[i].status);
             trElement.insertCell().innerText = orders[i].number;
             trElement.insertCell().innerText = `${orders[i].owner.name} ${orders[i].owner.lastName}`;
             trElement.insertCell().innerHTML = `<a href="/freelancers/view?id=${orders[i].freelancer.id}">${orders[i].freelancer.name} ${orders[i].freelancer.lastName}</a>`;
             trElement.insertCell().innerText = (new Date(orders[i].scheduledDate)).toLocaleDateString('ru-RU');
             trElement.insertCell().innerText = (new Date(orders[i].deadlineDate)).toLocaleDateString('ru-RU');
-            const statusInfo = CommonUtils.getStatusInfo(orders[i].status);
             trElement.insertCell().innerHTML = `<span class="badge badge-${statusInfo.color}">${statusInfo.name}</span>`
             trElement.insertCell().innerText = orders[i].completeDate ? (new Date(orders[i].completeDate)).toLocaleDateString('ru-RU') : '';
-            trElement.insertCell().innerHTML = '<div class="order-tools">' +
-                `<a href="/orders/view?id=${orders[i].id}" class="fas fa-eye"></a>` +
-                `<a href="/orders/edit?id=${orders[i].id}" class="fas fa-edit"></a>` +
-                `<a href="/orders/delete?id=${orders[i].id}" class="fas fa-trash"></a>` + '</div>';
+            trElement.insertCell().innerHTML = CommonUtils.generateGridToolsColumn('orders', orders[i].id)
 
             recordsElement.appendChild(trElement);
         }

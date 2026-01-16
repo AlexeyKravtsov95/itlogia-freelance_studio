@@ -1,153 +1,114 @@
-import { HttpUtils } from '../../utils/http-utils';
+import { ValidationUtils } from '../../utils/validation-utils';
+import { FreelancersService } from '../../services/freelancers-service';
+import { OrdersService } from '../../services/orders-service';
 
 export class OrdersCreate {
     constructor(openNewRoute) {
         this.openNewRoute = openNewRoute;
+
+        this.findElements();
+        document.getElementById('saveButton').addEventListener('click', this.saveOrders.bind(this));
+        this.scheduledDate = null;
+        this.deadlineDate = null;
+        this.completeDate = null;
+        this.validations = [
+            { element: this.descriptionInputElement },
+            { element: this.amountInputElement },
+            { element: this.scheduledCardElement, options: { checkProperty: this.scheduledDate } },
+            { element: this.deadLineCardElement, options: { checkProperty: this.deadlineDate } }
+        ];
+
+        const calendarOptions = {
+            inline: true,
+            locale: 'ru',
+            icons: {
+                time: 'far fa-clock'
+            },
+            useCurrent: false
+        }
+
+        const calendarScheduled = $('#calendar-scheduled');
+        calendarScheduled.datetimepicker(calendarOptions);
+
+        calendarScheduled.on('change.datetimepicker', (e) => {
+            this.scheduledDate = e.date;
+        });
+
+        const calendarDeadline = $('#calendar-deadline');
+        calendarDeadline.datetimepicker(calendarOptions);
+
+        calendarDeadline.on('change.datetimepicker', (e) => {
+            this.deadlineDate = e.date;
+        });
+
+        const calendarComplete = $('#calendar-complete');
+        calendarOptions.buttons = {
+            showClear: true
+        };
+
+        calendarComplete.datetimepicker(calendarOptions);
+        calendarComplete.on('change.datetimepicker', (e) => {
+            this.completeDate = e.date;
+        });
+
+        this.getFreelancers().then();
+    }
+
+    findElements() {
         this.freelancerSelectElement = document.getElementById('freelancerSelect');
         this.statusSelectElement = document.getElementById('statusSelect');
         this.descriptionInputElement = document.getElementById('descriptionInput');
         this.amountInputElement = document.getElementById('amountInput');
         this.scheduledCardElement = document.getElementById('scheduled-card');
-        this.completeCardElement = document.getElementById('complete-card');
         this.deadLineCardElement = document.getElementById('deadline-card');
-        document.getElementById('saveButton').addEventListener('click', this.saveOrders.bind(this));
-        this.scheduledDate = null;
-        this.deadlineDate = null;
-        this.completeDate = null;
-
-        const calendarScheduled = $('#calendar-scheduled');
-        calendarScheduled.datetimepicker({
-            inline: true,
-            locale: 'ru',
-            icons: {
-                time: 'far fa-clock',
-            },
-            useCurrent: false,
-        });
-
-        calendarScheduled.on('change.datetimepicker', (e) => {
-            this.scheduledDate = e.date;
-        })
-
-        const calendarDeadline = $('#calendar-deadline');
-        calendarDeadline.datetimepicker({
-            inline: true,
-            locale: 'ru',
-            icons: {
-                time: 'far fa-clock',
-            },
-            useCurrent: false,
-        })
-
-        calendarDeadline.on('change.datetimepicker', (e) => {
-            this.deadlineDate = e.date;
-        })
-
-        const calendarComplete = $('#calendar-complete');
-        calendarComplete.datetimepicker({
-            inline: true,
-            locale: 'ru',
-            icons: {
-                time: 'far fa-clock',
-            },
-            buttons: {
-                showClear: true
-            },
-            useCurrent: false,
-        })
-
-        calendarComplete.on('change.datetimepicker', (e) => {
-            this.completeDate = e.date;
-        })
-
-        this.getFreelancers().then();
     }
 
     async getFreelancers() {
-        const result = await HttpUtils.request('/freelancers');
+        const response = await FreelancersService.getFreelancers();
 
-        if (result.redirect) {
-            return this.openNewRoute(result.redirect);
+        if (response.error) {
+            alert(response.error);
+            return response.redirect ? this.openNewRoute(response.redirect) : null;
         }
 
-        if (result.error || !result.response || (result.response && (result.response.error || !result.response.freelancers))) {
-            return alert('Возникла ошибка при запросе фрилансеров. Обратитесь в поддержку');
-        }
-
-        const freelancers = result.response.freelancers;
-        for (let i = 0; i < freelancers.length; i++) {
+        for (let i = 0; i < response.freelancers.length; i++) {
             const option = document.createElement('option');
-            option.value = freelancers[i].id;
-            option.text = `${freelancers[i].name} ${freelancers[i].lastName}`;
+            option.value = response.freelancers[i].id;
+            option.text = `${response.freelancers[i].name} ${response.freelancers[i].lastName}`;
             this.freelancerSelectElement.appendChild(option);
         }
 
         $(this.freelancerSelectElement).select2({
             theme: 'bootstrap4'
-        })
+        });
     }
 
-    validateForm() {
-        let isValid = true;
-        let textInputArray = [
-            this.descriptionInputElement, this.amountInputElement
-        ];
-
-        for (let i = 0; i < textInputArray.length; i++) {
-            if (textInputArray[i].value) {
-                textInputArray[i].classList.remove('is-invalid');
-            } else {
-                textInputArray[i].classList.add('is-invalid');
-                isValid = false;
-            }
-        }
-
-        if (this.scheduledDate) {
-            this.scheduledCardElement.classList.remove('is-invalid');
-        } else {
-            this.scheduledCardElement.classList.add('is-invalid');
-            isValid = false;
-        }
-
-        if (this.deadlineDate) {
-            this.deadLineCardElement.classList.remove('is-invalid');
-        } else {
-            this.deadLineCardElement.classList.add('is-invalid');
-            isValid = false;
-        }
-
-        return isValid;
-    }
 
     async saveOrders(e) {
         e.preventDefault();
 
-        const createData = {
-            description: this.descriptionInputElement.value,
-            deadlineDate: this.deadlineDate.toISOString(),
-            scheduledDate: this.scheduledDate.toISOString(),
-            freelancer: this.freelancerSelectElement.value,
-            status: this.statusSelectElement.value,
-            amount: parseInt(this.amountInputElement.value),
-        }
+        if (ValidationUtils.validateForm(this.validations)) {
+            const createData = {
+                description: this.descriptionInputElement.value,
+                deadlineDate: this.deadlineDate.toISOString(),
+                scheduledDate: this.scheduledDate.toISOString(),
+                freelancer: this.freelancerSelectElement.value,
+                status: this.statusSelectElement.value,
+                amount: parseInt(this.amountInputElement.value)
+            };
 
-        if (this.completeDate) {
-            createData.completeDate = this.completeDate.toISOString();
-        }
-
-        if (this.validateForm()) {
-            const result = await HttpUtils.request('/orders', 'POST', true, createData);
-
-            if (result.redirect) {
-                return this.openNewRoute(result.redirect);
+            if (this.completeDate) {
+                createData.completeDate = this.completeDate.toISOString();
             }
 
-            if (result.error || !result.response || (result.response && result.response.error)) {
-                console.log(result.response.error);
-                return alert('Возникла ошибка при добавление заказа. Обратитесь в поддержку');
+            const response = await OrdersService.createOrder(createData);
+
+            if (response.error) {
+                alert(response.error);
+                return response.redirect ? this.openNewRoute(response.redirect) : null;
             }
 
-            return this.openNewRoute(`/orders/view?id=${result.response.id}`);
+            return this.openNewRoute(`/orders/view?id=${response.id}`);
         }
     }
 }

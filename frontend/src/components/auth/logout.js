@@ -1,25 +1,23 @@
 import { AuthUtils } from '../../utils/auth-utils';
-import { HttpUtils } from '../../utils/http-utils';
+import { AuthService } from '../../services/auth-service';
 
 export class Logout {
-  constructor(openNewRoute) {
-    this.openNewRoute = openNewRoute;
+    constructor(openNewRoute) {
+        this.openNewRoute = openNewRoute;
 
-    if (!AuthUtils.getAuthInfo(AuthUtils.accessTokenKey) || !AuthUtils.getAuthInfo(AuthUtils.refreshTokenKey)) {
-      return this.openNewRoute('/login');
+        if (!AuthUtils.getAuthInfo(AuthUtils.accessTokenKey) || !AuthUtils.getAuthInfo(AuthUtils.refreshTokenKey)) {
+            return this.openNewRoute('/login');
+        }
+
+        this.logout().then();
     }
 
-    this.logout().then();
-  }
+    async logout() {
 
-  async logout() {
+        await AuthService.logout({ refreshToken: AuthUtils.getAuthInfo(AuthUtils.refreshTokenKey) });
 
-    await HttpUtils.request('/logout', 'POST', false, {
-      refreshToken: AuthUtils.getAuthInfo(AuthUtils.refreshTokenKey),
-    });
+        AuthUtils.removeAuthInfo();
 
-    AuthUtils.removeAuthInfo()
-
-    this.openNewRoute('/login');
-  }
+        this.openNewRoute('/login');
+    }
 }

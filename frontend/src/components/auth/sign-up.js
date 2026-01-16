@@ -1,95 +1,63 @@
 import { AuthUtils } from '../../utils/auth-utils';
-import { HttpUtils } from '../../utils/http-utils';
+import { ValidationUtils } from '../../utils/validation-utils';
+import { AuthService } from '../../services/auth-service';
 
 export class SignUp {
-  constructor(openNewRoute) {
-    this.openNewRoute = openNewRoute;
+    constructor(openNewRoute) {
+        this.openNewRoute = openNewRoute;
 
-    if (AuthUtils.getAuthInfo(AuthUtils.accessTokenKey)) {
-      return this.openNewRoute('/');
+        if (AuthUtils.getAuthInfo(AuthUtils.accessTokenKey)) {
+            return this.openNewRoute('/');
+        }
+
+        this.findElements();
+
+        this.validations = [
+            { element: this.nameElement },
+            { element: this.lastNameElement },
+            { element: this.emailElement, options: { pattern: /^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/ } },
+            { element: this.passwordElement, options: { pattern: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/ } },
+            { element: this.passwordRepeatElement, options: {compareTo: this.passwordElement.value } },
+            { element: this.agreeElement, options: {checked: true } }
+
+        ];
+
+        document.getElementById('process-button').addEventListener('click', this.signUp.bind(this));
     }
 
-    this.nameElement = document.getElementById('name');
-    this.lastNameElement = document.getElementById('last-name');
-    this.emailElement = document.getElementById('email');
-    this.passwordElement = document.getElementById('password');
-    this.passwordRepeatElement = document.getElementById('password-repeat');
-    this.agreeElement = document.getElementById('agree');
-    this.commonErrorElement = document.getElementById('common-error');
-    document.getElementById('process-button').addEventListener('click', this.signUp.bind(this));
-  }
-
-  validateForm() {
-    let isValid = true;
-
-    if (this.nameElement.value) {
-      this.nameElement.classList.remove('is-invalid');
-    } else {
-      this.nameElement.classList.add('is-invalid');
-      isValid = false;
+    findElements() {
+        this.nameElement = document.getElementById('name');
+        this.lastNameElement = document.getElementById('last-name');
+        this.emailElement = document.getElementById('email');
+        this.passwordElement = document.getElementById('password');
+        this.passwordRepeatElement = document.getElementById('password-repeat');
+        this.agreeElement = document.getElementById('agree');
+        this.commonErrorElement = document.getElementById('common-error');
     }
 
-    if (this.lastNameElement.value) {
-      this.lastNameElement.classList.remove('is-invalid');
-    } else {
-      this.lastNameElement.classList.add('is-invalid');
-      isValid = false;
+    async signUp() {
+        this.commonErrorElement.style.display = 'none';
+        for (let i = 0; i < this.validations.length; i++) {
+            if (this.validations[i].element === this.passwordRepeatElement) {
+                this.validations[i].options.compareTo = this.passwordElement.value;
+            }
+        }
+        if (ValidationUtils.validateForm(this.validations)) {
+
+            const signUpResult = await AuthService.signUp({
+                name: this.nameElement.value,
+                lastName: this.lastNameElement.value,
+                email: this.emailElement.value,
+                password: this.passwordElement.value
+            });
+
+
+            AuthUtils.setAuthInfo(signUpResult.accessToken, signUpResult.refreshToken, {
+                id: signUpResult.id,
+                name: signUpResult.name
+            });
+
+            this.openNewRoute('/');
+        }
     }
-
-    if (this.emailElement.value && this.emailElement.value.match(/^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/)) {
-      this.emailElement.classList.remove('is-invalid');
-    } else {
-      this.emailElement.classList.add('is-invalid');
-      isValid = false;
-    }
-
-    if (this.passwordElement.value && this.passwordElement.value.match(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/)) {
-      this.passwordElement.classList.remove('is-invalid');
-    } else {
-      this.passwordElement.classList.add('is-invalid');
-      isValid = false;
-    }
-
-    if (this.passwordRepeatElement.value && this.passwordElement.value === this.passwordRepeatElement.value) {
-      this.passwordElement.classList.remove('is-invalid');
-    } else {
-      this.passwordElement.classList.add('is-invalid');
-      isValid = false;
-    }
-
-    if (this.agreeElement.checked) {
-      this.passwordElement.classList.remove('is-invalid');
-    } else {
-      this.passwordElement.classList.add('is-invalid');
-      isValid = false;
-    }
-
-
-    return isValid;
-  }
-
-  async signUp() {
-    this.commonErrorElement.style.display = 'none';
-    if (this.validateForm()) {
-
-      const result = await HttpUtils.request('/signup', 'POST', false, {
-        name: this.nameElement.value,
-        lastName: this.lastNameElement.value,
-        email: this.emailElement.value,
-        password: this.passwordElement.value
-      });
-
-      if (result.error || !result.response || (result.response && (!result.response.accessToken || !result.response.refreshToken || !result.response.id || !result.response.name))) {
-        this.commonErrorElement.style.display = 'block';
-        return;
-      }
-
-      AuthUtils.setAuthInfo(result.accessToken, result.refreshToken, {
-        id: result.id,
-        name: result.name
-      });
-
-      this.openNewRoute('/');
-    }
-  }
 }

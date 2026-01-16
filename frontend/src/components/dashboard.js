@@ -1,5 +1,5 @@
-import { HttpUtils } from '../utils/http-utils';
 import config from '../config/config';
+import { OrdersService } from '../services/orders-service';
 
 export class Dashboard {
     constructor(openNewRoute) {
@@ -11,18 +11,15 @@ export class Dashboard {
     }
 
     async getOrders() {
-        const result = await HttpUtils.request('/orders');
+        const response = await OrdersService.getOrders();
 
-        if (result.redirect) {
-            return this.openNewRoute(result.redirect);
+        if (response.error) {
+            alert(response.error);
+            return response.redirect ? this.openNewRoute(response.redirect) : null;
         }
 
-        if (result.error || !result.response || (result.response && (result.response.error || !result.response.orders))) {
-            return alert('Возникла ошибка при запросе фрилансеров. Обратитесь в поддержку');
-        }
-
-        this.loadOrdersInfo(result.response.orders);
-        this.loadCalendarInfo(result.response.orders);
+        this.loadOrdersInfo(response.orders);
+        this.loadCalendarInfo(response.orders);
     }
 
     loadOrdersInfo(orders) {
@@ -44,10 +41,9 @@ export class Dashboard {
             }
 
             if (orders[i].scheduledDate) {
-                const scheduledDate = new Date(orders[i].scheduledDate);
                 preparedEvents.push({
-                        title: `${orders[i].freelancer.name} ${orders[i].freelancer.lastName} выполняет заказ ${orders[i].number}` ,
-                        start: scheduledDate,
+                        title: `${orders[i].freelancer.name} ${orders[i].freelancer.lastName} выполняет заказ ${orders[i].number}`,
+                        start: new Date(orders[i].scheduledDate),
                         backgroundColor: color ? color : '#00c0ef',
                         borderColor: color ? color : '#00c0ef',
                         allDay: true
@@ -56,10 +52,9 @@ export class Dashboard {
             }
 
             if (orders[i].deadlineDate) {
-                const deadlineDate = new Date(orders[i].deadlineDate);
                 preparedEvents.push({
                         title: `Дедлайн заказа ${orders[i].number}`,
-                        start: deadlineDate,
+                        start: new Date(orders[i].deadlineDate),
                         backgroundColor: color ? color : '#f39c12',
                         borderColor: color ? color : '#f39c12',
                         allDay: true
@@ -68,10 +63,9 @@ export class Dashboard {
             }
 
             if (orders[i].completeDate) {
-                const completeDate = new Date(orders[i].completeDate);
                 preparedEvents.push({
                         title: `Заказ ${orders[i].number} выполнен фрилансером ${orders[i].freelancer.name}`,
-                        start: completeDate,
+                        start: new Date(orders[i].completeDate),
                         backgroundColor: color ? color : '#00a65a',
                         borderColor: color ? color : '#00a65a',
                         allDay: true
@@ -80,12 +74,7 @@ export class Dashboard {
             }
         }
 
-        var date = new Date();
-        var d = date.getDate(),
-            m = date.getMonth(),
-            y = date.getFullYear();
-
-        const calendar = new FullCalendar.Calendar(
+        (new FullCalendar.Calendar(
             this.calendarElement, {
                 headerToolbar: {
                     left: 'prev,next today',
@@ -95,59 +84,9 @@ export class Dashboard {
                 firstDay: 1,
                 themeSystem: 'bootstrap',
                 locale: 'ru',
-                //Random default events
                 events:
-                preparedEvents,
-                //         {
-                //             title: 'All Day Event',
-                //             start: new Date(y, m, 1),
-                //             backgroundColor: '#f56954', //red
-                //             borderColor: '#f56954', //red
-                //             allDay: true
-                //         },
-                //         {
-                //             title: 'Long Event',
-                //             start: new Date(y, m, d - 5),
-                //             end: new Date(y, m, d - 2),
-                //             backgroundColor: '#f39c12', //yellow
-                //             borderColor: '#f39c12' //yellow
-                //         },
-                //         {
-                //             title: 'Meeting',
-                //             start: new Date(y, m, d, 10, 30),
-                //             allDay: false,
-                //             backgroundColor: '#0073b7', //Blue
-                //             borderColor: '#0073b7' //Blue
-                //         },
-                //         {
-                //             title: 'Lunch',
-                //             start: new Date(y, m, d, 12, 0),
-                //             end: new Date(y, m, d, 14, 0),
-                //             allDay: false,
-                //             backgroundColor: '#00c0ef', //Info (aqua)
-                //             borderColor: '#00c0ef' //Info (aqua)
-                //         },
-                //         {
-                //             title: 'Birthday Party',
-                //             start: new Date(y, m, d + 1, 19, 0),
-                //             end: new Date(y, m, d + 1, 22, 30),
-                //             allDay: false,
-                //             backgroundColor: '#00a65a', //Success (green)
-                //             borderColor: '#00a65a' //Success (green)
-                //         },
-                //         {
-                //             title: 'Click for Google',
-                //             start: new Date(y, m, 28),
-                //             end: new Date(y, m, 29),
-                //             url: 'https://www.google.com/',
-                //             backgroundColor: '#3c8dbc', //Primary (light-blue)
-                //             borderColor: '#3c8dbc' //Primary (light-blue)
-                //         }
-                //     ]
-                // }
+                preparedEvents
             }
-        );
-
-        calendar.render();
+        )).render();
     }
 }

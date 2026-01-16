@@ -1,7 +1,9 @@
-import { HttpUtils } from '../../utils/http-utils';
 import config from '../../config/config';
 import { CommonUtils } from '../../utils/common-utils';
 import { FileUtils } from '../../utils/file-utils';
+import { ValidationUtils } from '../../utils/validation-utils';
+import { UrlUtils } from '../../utils/url-utils';
+import { FreelancersService } from '../../services/freelancers-service';
 
 export class FreelancerEdit {
     constructor(openNewRoute) {
@@ -10,6 +12,26 @@ export class FreelancerEdit {
         document.getElementById('updateButton').addEventListener('click', this.updateFreelancer.bind(this));
         bsCustomFileInput.init();
 
+        this.findElements();
+        this.validations = [
+            { element: this.nameInputElement },
+            { element: this.lastNameInputElement },
+            { element: this.educationInputElement },
+            { element: this.locationInputElement },
+            { element: this.skillsInputElement },
+            { element: this.infoInputElement },
+            { element: this.emailInputElement, options: { pattern: /^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/ } }
+        ];
+
+        const id = UrlUtils.getUrlParam('id');
+        if (!id) {
+            return this.openNewRoute('/');
+        }
+
+        this.getFreelancer(id).then();
+    }
+
+    findElements() {
         this.nameInputElement = document.getElementById('nameInput');
         this.lastNameInputElement = document.getElementById('lastNameInput');
         this.emailInputElement = document.getElementById('emailInput');
@@ -19,36 +41,24 @@ export class FreelancerEdit {
         this.infoInputElement = document.getElementById('infoInput');
         this.levelSelectElement = document.getElementById('levelSelect');
         this.avatarInputElement = document.getElementById('avatarInput');
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const id = urlParams.get('id');
-        if (!id) {
-            return this.openNewRoute('/')
-        }
-
-        this.getFreelancer(id).then();
     }
 
     async getFreelancer(id) {
-        const result = await HttpUtils.request('/freelancers/' + id);
+        const response = await FreelancersService.getFreelancer(id);
 
-        if (result.redirect) {
-            return this.openNewRoute(result.redirect);
+        if (response.error) {
+            alert(response.error);
+            return response.redirect ? this.openNewRoute(response.redirect) : null;
         }
 
-        if (result.error || !result.response || (result.response && result.response.error )) {
-            console.log(result.response.error);
-            return alert('Возникла ошибка при запросе фрилансеров. Обратитесь в поддержку');
-        }
-
-        this.freelancerOriginalData = result.response;
-        this.showFreelancer(result.response);
+        this.freelancerOriginalData = response.freelancer;
+        this.showFreelancer(response.freelancer);
     }
 
     showFreelancer(freelancer) {
         const breadcrumbsElement = document.getElementById('breadcrumbs-freelancer');
         breadcrumbsElement.href = '/freelancers/view?id=' + freelancer.id;
-        breadcrumbsElement.innerText = `${freelancer.name} ${freelancer.lastName}`
+        breadcrumbsElement.innerText = `${freelancer.name} ${freelancer.lastName}`;
         if (freelancer.avatar) {
             document.getElementById('avatar').src = config.host + freelancer.avatar;
         }
@@ -69,36 +79,11 @@ export class FreelancerEdit {
         }
     }
 
-    validateForm() {
-        let isValid = true;
-        let textInputArray = [
-            this.nameInputElement, this.lastNameInputElement, this.educationInputElement,
-            this.locationInputElement, this.skillsInputElement, this.infoInputElement
-        ];
-
-        for (let i = 0; i < textInputArray.length; i++) {
-            if (textInputArray[i].value) {
-                textInputArray[i].classList.remove('is-invalid');
-            } else {
-                textInputArray[i].classList.add('is-invalid');
-                isValid = false;
-            }
-        }
-
-        if (this.emailInputElement.value && this.emailInputElement.value.match(/^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/)) {
-            this.emailInputElement.classList.remove('is-invalid');
-        } else {
-            this.emailInputElement.classList.add('is-invalid');
-            isValid = false;
-        }
-
-        return isValid;
-    }
-
     async updateFreelancer(e) {
         e.preventDefault();
 
-        if (this.validateForm()) {
+        if (ValidationUtils.validateForm(this.validations)) {
+
             const changedData = {};
             if (this.nameInputElement.value !== this.freelancerOriginalData.name) {
                 changedData.name = this.nameInputElement.value;
@@ -137,15 +122,11 @@ export class FreelancerEdit {
             }
 
             if (Object.keys(changedData).length > 0) {
-                const result = await HttpUtils.request('/freelancers/' + this.freelancerOriginalData.id, 'PUT', true, changedData);
+                const response = await FreelancersService.updateFreelancer(this.freelancerOriginalData.id, changedData);
 
-                if (result.redirect) {
-                    return this.openNewRoute(result.redirect);
-                }
-
-                if (result.error || !result.response || (result.response && result.response.error )) {
-                    console.log(result.response.error);
-                    return alert('Возникла ошибка при редактировании фрилансеров. Обратитесь в поддержку');
+                if (response.error) {
+                    alert(response.error);
+                    return response.redirect ? this.openNewRoute(response.redirect) : null;
                 }
 
                 return this.openNewRoute(`/freelancers/view?id=${this.freelancerOriginalData.id}`);

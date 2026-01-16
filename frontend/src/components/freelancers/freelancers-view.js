@@ -1,12 +1,13 @@
-import { HttpUtils } from '../../utils/http-utils';
 import config from '../../config/config';
 import { CommonUtils } from '../../utils/common-utils';
+import { UrlUtils } from '../../utils/url-utils';
+import { FreelancersService } from '../../services/freelancers-service';
 
 export class FreelancersView {
     constructor(openNewRoute) {
         this.openNewRoute = openNewRoute;
-        const urlParams = new URLSearchParams(window.location.search);
-        const id = urlParams.get('id');
+        const id = UrlUtils.getUrlParam('id');
+
         if (!id) {
             return this.openNewRoute('/')
         }
@@ -16,18 +17,14 @@ export class FreelancersView {
     }
 
     async getFreelancer(id) {
-        const result = await HttpUtils.request('/freelancers/' + id);
+        const response = await FreelancersService.getFreelancer(id);
 
-        if (result.redirect) {
-            return this.openNewRoute(result.redirect);
+        if (response.error) {
+            alert(response.error);
+            return response.redirect ? this.openNewRoute(response.redirect) : null;
         }
 
-        if (result.error || !result.response || (result.response && result.response.error )) {
-            console.log(result.response.error);
-            return alert('Возникла ошибка при запросе фрилансеров. Обратитесь в поддержку');
-        }
-
-        this.showFreelancer(result.response);
+        this.showFreelancer(response.freelancer);
     }
 
     showFreelancer(freelancer) {
